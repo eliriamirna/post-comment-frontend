@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# Post and Comments - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Este projeto é uma aplicação **Fullstack** de cadastro e gerenciamento de postagens, desenvolvida utilizando **React**, **Tailwind CSS**, **TypeScript**, e outras tecnologias modernas para garantir uma experiência de usuário interativa e fluida.
 
-## Available Scripts
+### Stack Utilizada
 
-In the project directory, you can run:
+- **React**: Framework JavaScript para construção de interfaces de usuário. Escolhemos o React por sua flexibilidade e vasta comunidade, além de sua compatibilidade com o TypeScript, proporcionando uma excelente experiência de desenvolvimento.
+- **Tailwind CSS**: Utilizado para estilização, o Tailwind CSS permite a construção rápida de interfaces responsivas e personalizadas de forma declarativa.
+- **TypeScript**: Utilizado para garantir a tipagem estática e melhorar a manutenção e escalabilidade do código.
+- **JWT (JSON Web Token)**: Para a autenticação do usuário. O JWT é utilizado para garantir que as rotas protegidas do sistema só possam ser acessadas por usuários autenticados.
 
-### `npm start`
+## Funcionalidades
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Cadastro e Autenticação de Usuários**: A aplicação permite que os usuários se cadastrem e façam login, utilizando a autenticação JWT para manter a sessão ativa durante a navegação.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **CRUD de Postagens**: O sistema permite que os usuários criem, editem e excluam suas postagens. Apenas o usuário que criou a postagem pode editá-la ou excluí-la. Além disso, as postagens possuem funcionalidades adicionais como:
+  - Adicionar uma imagem à postagem.
 
-### `npm test`
+- **CRUD de Comentários**: Os usuários podem criar, editar e excluir seus próprios comentários em postagens. O proprietário da postagem também tem permissão para excluir os comentários.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Relatórios**: A aplicação gera relatórios das postagens, incluindo informações como:
+  - Título da postagem.
+  - Quantidade de comentários.
 
-### `npm run build`
+### Como Rodar o Sistema Localmente
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. **Pré-requisitos**:
+   - Node.js (v14 ou superior)
+   - NPM ou Yarn
+   - Acesso à API Backend (verifique as instruções do backend no repositório correspondente)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Como Executar o Projeto
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Clone o repositório:
 
-### `npm run eject`
+```bash
+    git clone https://github.com/eliriamirna/post-comment-frontend
+    cd post-comment-frontend
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. Instale as dependências:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+    npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+3. Inicie o servidor de desenvolvimento:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+    npm start
+```
 
-## Learn More
+4. Acesse a aplicação no navegador:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- http://localhost:3000
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Estrutura do Projeto
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+├── public
+│   └── index.html                  # Página HTML principal
+├── src
+│   ├── components                  # Componentes reutilizáveis
+│   ├── pages
+│   ├── utils                       # Utilitários e serviços
+│   │   ├── api.ts                  # Arquivo de configuração da API
+│   │   ├── config.ts               # Config URL
+│   ├── App.tsx                     # Componente principal da aplicação
+│   ├── index.tsx                   # Arquivo de entrada
+│   └── index.css                   # Arquivo de estilos globais
+├── package.json                    # Configurações e dependências do projeto
+├── tailwind.config.js              # Configuração do Tailwind CSS
+└── tsconfig.json                   # Configuração do TypeScript
+```
