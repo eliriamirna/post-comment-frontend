@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { customFetch } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { configUrl } from '../../utils/config';
 
 interface Post {
   id: number;
@@ -13,8 +14,15 @@ interface Post {
   file_path: string | null;
 }
 
-interface Comment {
+interface BackendComment {
   id: number;
+  user_id: number;
+  post_id: number;
+  description: string;
+}
+
+interface Comment {
+  comment_id: number;
   user_id: number;
   post_id: number;
   description: string;
@@ -26,45 +34,52 @@ interface User {
   email: string;
 }
 
+type FormData = {
+  newCommentDescription: string;
+  comments: Comment[];
+};
+
 export function Posts() {
   const { user, logout } = useAuth();  
-  const { register } = useForm<Comment>();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [newComment, setNewComment] = useState<{ [postId: number]: string }>({});
   const [addComment, setAddComment] =useState(false)
-  const [newCommentTrigger, setNewCommentTrigger] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  
+  const { control, getValues, setValue } = useForm<FormData>();
+  const { fields, replace, append, remove } = useFieldArray({
+    control,
+    name: "comments",
+  });
+  
+  const fetchPostsAndData = async () => {
+    try {
+      const postsResponse = await customFetch('/posts');
+      if (postsResponse.ok) {
+        const postsData = await postsResponse.json();
+        setPosts(postsData.posts || []);
+      }
+      const commentsResponse = await customFetch('/comments');
+      if (commentsResponse.ok) {
+        const commentsData = await commentsResponse.json();
+        replace(commentsData.comments.map((comment: BackendComment) => {
+          return {
+            ...comment,
+            comment_id: comment.id,
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPostsAndData = async () => {
-      try {
-        const postsResponse = await customFetch('/posts');
-        if (postsResponse.ok) {
-          const postsData = await postsResponse.json();
-          setPosts(postsData.posts || []);
-        }
-        const commentsResponse = await customFetch('/comments');
-        if (commentsResponse.ok) {
-          const commentsData = await commentsResponse.json();
-          setComments((prevComments) => {
-            const newComments = commentsData.comments.filter(
-              (newComment: Comment) => !prevComments.some((comment) => comment.id === newComment.id)
-            );
-            return [...prevComments, ...newComments];
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao buscar dados:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
     fetchPostsAndData();
-  }, [newCommentTrigger, newComment]);
+  }, []);
   
 
   const editProfile = (id: number) => {
@@ -107,7 +122,7 @@ export function Posts() {
   };
 
   const handleAddComment = async (postId: number) => {
-    const description = newComment[postId]?.trim();
+    const { newCommentDescription: description } = getValues();
     
     if (!description) {
       alert('O comentário não pode estar vazio.');
@@ -131,10 +146,9 @@ export function Posts() {
   
       if (response.ok) {
         const newCommentData: Comment = await response.json();
-        setComments((prevComments) => [...prevComments, newCommentData]);
-        setNewComment((prev) => ({ ...prev, [postId]: '' }));
-        setNewCommentTrigger((prev) => !prev);
+        append(newCommentData);
         setAddComment(false);
+        fetchPostsAndData();
       } else {
         alert('Erro ao adicionar comentário.');
       }
@@ -145,7 +159,11 @@ export function Posts() {
   };
   
   const handleEditComment = async (postId: number, commentId: number, userId: number) => {
-    const description = newComment[postId]?.trim();
+    const { comments } = getValues();
+    console.log('commentId', commentId)
+    const comment = comments.find(comment => comment.comment_id === commentId);
+    console.log('comments', comments)
+    const description = comment?.description?.trim();
   
     if (!description) {
       alert('O comentário não pode estar vazio.');
@@ -153,11 +171,11 @@ export function Posts() {
     }
   
     const existingComment = comments.find(
-      (comment) => comment.id === commentId && comment.user_id === userId
+      (comment) => comment.comment_id === commentId && comment.user_id === userId
     );
   
     if (existingComment && user?.id !== userId) {
-      alert('Você não tem permissão para editar este comentário.');
+      alert('Esse post pertence a outro usuário e você não pode editá-lo')
       return;
     }
   
@@ -177,15 +195,9 @@ export function Posts() {
       });
   
       if (response.ok) {
-        const updatedCommentData: Comment = await response.json();
-        setComments((prevComments) =>
-          prevComments.map((comment) =>
-            comment.id === updatedCommentData.id ? updatedCommentData : comment
-          )
-        );
-        setNewComment((prev) => ({ ...prev, [postId]: '' }));
-        setNewCommentTrigger((prev) => !prev);
-        setEditingCommentId(null); // Limpa o modo de edição
+        await response.json();
+        setEditingCommentId(null);
+        fetchPostsAndData();
       } else {
         alert('Erro ao editar comentário.');
       }
@@ -205,7 +217,10 @@ export function Posts() {
       try {
         const response = await customFetch(`/comments/${commentId}`, { method: 'DELETE' });
         if (response.ok) {
-          setComments((prevComments) => prevComments.filter((comment) => comment.id !== commentId));
+          const commentIndex = getValues().comments.findIndex(comment => comment.comment_id === commentId)
+          if (commentIndex >= 0) {
+            remove(commentIndex);
+          }
         } else {
           alert('Erro ao excluir o comentário.');
         }
@@ -278,86 +293,97 @@ export function Posts() {
             </div>
             <p className="mt-2 text-gray-700">{post.description}</p>
 
-            {/* {post.file_path && (
+            {post.file_name && (
               <div className="mt-4">
                 <img
-                   src={`/public/${post.file_path.replace(/\\/g, '/')}`}
-                  alt={`${post.file_path}`}
+                   src={`${configUrl}/uploads/${post.file_name.replace(/\\/g, '/')}`}
+                  alt={`${post.file_name}`}
                   className="w-full h-auto rounded-lg"
                 />
               </div>
-            )} */}
+            )}
 
 
             <div className="mt-6">
               <h3 className="text-lg font-bold text-[#40c4ff]">Comentários:</h3>
               <ul className="mt-2 space-y-2">
-                {comments
-                  .filter((comment) => comment.post_id === post.id)
-                  .map((comment) => (
-                    <li
-                      key={comment.id}
-                      className="bg-gray-100 text-gray-800 p-3 rounded-lg shadow-sm flex justify-between items-center"
-                    >
-                    {editingCommentId === comment.id ? (
-                        <input
-                          {...register('description')}
-                          type="text"
-                          value={newComment[comment.id] || comment.description}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setNewComment((prev) => ({
-                              ...prev,
-                              [comment.post_id]: value, 
-                            }));
-                          }}
-                          className="w-[70%] px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-[#40c4ff] focus:border-[#40c4ff]"
+                {fields
+                  .map((comment, index) => {
+                    if (comment.post_id !== post.id) {
+                      return <></>;
+                    }
+                    return (
+                      <li
+                        key={comment.id}
+                        className="bg-gray-100 text-gray-800 p-3 rounded-lg shadow-sm flex justify-between items-center"
+                      >
+                      {editingCommentId === comment.comment_id ? (
+                        <Controller
+                          name={`comments.${index}.description`}
+                          control={control}
+                          defaultValue={comment.description ?? ''}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-[70%] px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-[#40c4ff] focus:border-[#40c4ff]"
+                            />
+                          )}
                         />
-                      ) : (
-                        <span className="max-w-[75%] overflow-x-auto">
-                          {comment.description}
-                        </span>
-                      )}
-                      <div className="space-x-2">
-                      <button
-                        onClick={() => {
-                          if (editingCommentId === comment.id) {
-                            setEditingCommentId(null);
-                            handleEditComment(post.id, comment.id, comment.user_id); 
-                          } else {
-                            setEditingCommentId(comment.id); 
-                          }
-                        }}
-                        className="bg-[#40c4ff] px-2 py-1 rounded-lg text-white font-medium hover:bg-[#009acd]"
-                      >
-                        {editingCommentId === comment.id ? 'Salvar' : 'Editar'}
-                      </button>
+                      
+                        ) : (
+                          <span className="max-w-[75%] overflow-x-auto">
+                            {comment.description}
+                          </span>
+                        )}
+                        <div className="space-x-2">
+                        <button
+                          onClick={() => {
+                            if (editingCommentId === comment.comment_id) {
+                              setEditingCommentId(null);
+                              handleEditComment(post.id, comment.comment_id, comment.user_id); 
+                            } else {
+                              setEditingCommentId(comment.comment_id);
+                            }
+                          }}
+                          className="bg-[#40c4ff] px-2 py-1 rounded-lg text-white font-medium hover:bg-[#009acd]"
+                        >
+                          {editingCommentId === comment.comment_id ? 'Salvar' : 'Editar'}
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          if (editingCommentId === comment.id) {
-                            setEditingCommentId(null); 
-                          } else {
-                            handleDeleteComment(comment.id, comment.user_id); 
-                          }
-                        }}
-                        className="bg-red-600 px-2 py-1 rounded-lg text-white font-medium hover:bg-red-800"
-                      >
-                        {editingCommentId === comment.id ? 'Cancelar' : 'Excluir'}
-                      </button>
+                        <button
+                          onClick={() => {
+                            if (editingCommentId === comment.comment_id) {
+                              setEditingCommentId(null); 
+                            } else {
+                              handleDeleteComment(comment.comment_id, comment.user_id); 
+                            }
+                          }}
+                          className="bg-red-600 px-2 py-1 rounded-lg text-white font-medium hover:bg-red-800"
+                        >
+                          {editingCommentId === comment.comment_id ? 'Cancelar' : 'Excluir'}
+                        </button>
 
-                      </div>
-                    </li>
-                  ))}
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
               {addComment && (
                 <div className="mt-4">
-                  <textarea
-                    value={newComment[post.id] || ''}
-                    onChange={(e) => setNewComment((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                    placeholder="Escreva seu comentário aqui..."
-                    className="text-[#403181] mt-1 p-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#40c4ff]"
-                    rows={4}
+                  <Controller 
+                    name="newCommentDescription"
+                    control={control}
+                    render={({ field }) => {
+                      return (
+                        <textarea
+                          {...field}
+                          placeholder="Escreva seu comentário aqui..."
+                          className="text-[#403181] mt-1 p-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#40c4ff]"
+                          rows={4}
+                        />
+                      )
+                    }}
                   />
                 </div>
               )}
