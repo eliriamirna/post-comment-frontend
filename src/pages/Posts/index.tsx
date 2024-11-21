@@ -323,9 +323,9 @@ export function Posts() {
                         onClick={() => {
                           if (editingCommentId === comment.id) {
                             setEditingCommentId(null);
-                            handleEditComment(post.id, comment.id, comment.user_id); // Edita o comentário
+                            handleEditComment(post.id, comment.id, comment.user_id); 
                           } else {
-                            setEditingCommentId(comment.id); // Habilita o modo de edição
+                            setEditingCommentId(comment.id); 
                           }
                         }}
                         className="bg-[#40c4ff] px-2 py-1 rounded-lg text-white font-medium hover:bg-[#009acd]"
@@ -336,9 +336,9 @@ export function Posts() {
                       <button
                         onClick={() => {
                           if (editingCommentId === comment.id) {
-                            setEditingCommentId(null); // Cancela a edição
+                            setEditingCommentId(null); 
                           } else {
-                            handleDeleteComment(comment.id, comment.user_id); // Exclui o comentário
+                            handleDeleteComment(comment.id, comment.user_id); 
                           }
                         }}
                         className="bg-red-600 px-2 py-1 rounded-lg text-white font-medium hover:bg-red-800"
