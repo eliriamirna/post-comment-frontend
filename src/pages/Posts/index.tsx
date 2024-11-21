@@ -46,6 +46,7 @@ export function Posts() {
   const navigate = useNavigate();
   const [addComment, setAddComment] =useState(false)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [activePostId, setActivePostId] = useState<number | null>(null);
   
   const { control, getValues, setValue } = useForm<FormData>();
   const { fields, replace, append, remove } = useFieldArray({
@@ -369,7 +370,7 @@ export function Posts() {
                     );
                   })}
               </ul>
-              {addComment && (
+              {addComment && activePostId === post.id && (
                 <div className="mt-4">
                   <Controller 
                     name="newCommentDescription"
@@ -389,7 +390,10 @@ export function Posts() {
               )}
               {!addComment ?  
                 <button
-                  onClick={() => setAddComment(true)}
+                onClick={() => 
+                  {setActivePostId(post.id)
+                  setAddComment(true)}
+                }
                   className="mt-2 bg-[#40c4ff] px-4 py-2 rounded-lg text-white font-medium hover:bg-[#009acd]"
                 >
                   Adicionar Comentário
