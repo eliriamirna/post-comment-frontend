@@ -4,14 +4,15 @@ import { customFetch } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 export function PostForm() {
-  const { user } = useAuth(); // Autenticação
-  const { id } = useParams(); // Captura o ID do post na URL (para edição)
+  const { user } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    file: null, // Para upload de imagens
+    file: null as File | null,
+    preview: '', 
   });
 
   useEffect(() => {
@@ -22,9 +23,10 @@ export function PostForm() {
           if (response.ok) {
             const data = await response.json();
             setFormData({
-              title: data.title || '',
-              description: data.description || '',
-              file: null, // Não carregamos o arquivo no formulário
+              title: data.post.title || '',
+              description: data.post.description || '',
+              file: null,
+              preview: '',
             });
           } else {
             console.error('Erro ao buscar os dados do post');
@@ -40,28 +42,13 @@ export function PostForm() {
     }
   }, [id]);
 
-  const uploadFile = async (postId: number, file: File) => {
-    try {
-      const uploadData = new FormData();
-      uploadData.append('post_id', postId.toString());
-      uploadData.append('file', file);
-
-      const response = await customFetch('/upload', {
-        method: 'POST',
-        body: uploadData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData?.message || 'Erro ao enviar o arquivo';
-        throw new Error(errorMessage);
-      }
-
-      alert('Arquivo enviado com sucesso!');
-    } catch (error: any) {
-      alert(error.message || 'Erro inesperado no envio do arquivo');
-      console.error('Erro no upload:', error);
-    }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData({
+      ...formData,
+      file,
+      preview: file ? URL.createObjectURL(file) : '',
+    });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -69,6 +56,7 @@ export function PostForm() {
 
     try {
       const postData = {
+        user_id: user?.id,
         title: formData.title,
         description: formData.description,
       };
@@ -91,19 +79,26 @@ export function PostForm() {
       }
 
       const savedPost = await response.json();
+      const postId = savedPost.post.id
+      console.log(postId)
 
-      // Faz o upload do arquivo se ele existir
       if (formData.file) {
-        await uploadFile(savedPost.id, formData.file);
+        const uploadData = new FormData();
+        uploadData.append('file', formData.file);
+        uploadData.append('post_id', postId);
+
+        const uploadResponse = await customFetch('/upload', {
+          method: 'POST',
+          body: uploadData,
+        }, false);
+
+        if (!uploadResponse.ok) {
+          throw new Error('Erro ao fazer upload do arquivo');
+        }
       }
 
-      if (id) {
-        alert('Post atualizado com sucesso!');
-      } else {
-        alert('Post criado com sucesso!');
-      }
-
-      navigate('/'); // Redireciona para a página inicial
+      alert(id ? 'Post atualizado com sucesso!' : 'Post criado com sucesso!');
+      navigate('/posts');
     } catch (error: any) {
       alert(error.message || 'Erro inesperado ao salvar os dados');
       console.error('Erro:', error);
@@ -145,18 +140,29 @@ export function PostForm() {
             />
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="file" className="block text-sm font-medium text-white">
-              Imagem (opcional)
-            </label>
-            <input
-              type="file"
-              id="file"
-              // onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-              className="mt-1 p-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#40c4ff]"
-              accept="image/*"
-            />
-          </div>
+          {id ? '' : 
+            <div className="mb-4">
+              <label htmlFor="file" className="block text-sm font-medium text-white">
+                Imagem (opcional)
+              </label>
+              <input
+                type="file"
+                id="file"
+                onChange={handleFileChange}
+                className="mt-1 p-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#40c4ff]"
+                accept="image/*"
+              />
+              {formData.preview && (
+                <div className='flex items-center justify-center'>
+                  <img
+                    src={formData.preview}
+                    alt="Pré-visualização"
+                    className="mt-4 max-h-40 object-cover rounded-md text-center"
+                  />
+                </div>
+              )}
+            </div>
+          }
 
           <button
             type="submit"

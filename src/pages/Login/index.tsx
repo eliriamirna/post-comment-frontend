@@ -3,13 +3,13 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
 import { Oval } from 'react-loader-spinner'; 
-interface ILogin {
+interface Login {
   email: string;
   password: string;
 }
 
 export function Login() {
-  const { register, handleSubmit } = useForm<ILogin>();
+  const { register, handleSubmit } = useForm<Login>();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,13 +19,12 @@ export function Login() {
     setShowPassword(!showPassword);
   };
 
-  const handleLogin = async (data: ILogin) => {
+  const handleLogin = async (data: Login) => {
     setLoading(true);
     setError(null);
 
     try {
       await login(data.email, data.password);
-      alert('Login efetuado com sucesso!')
     } catch (err: any) {
       const mensagemErro = err.response?.data?.mensagem || 'Erro ao autenticar. Verifique suas credenciais.';
       setError(mensagemErro);

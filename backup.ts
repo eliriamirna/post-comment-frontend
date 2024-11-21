@@ -106,61 +106,32 @@ export function Posts() {
     
   };
 
-  const handleAddComment = async (postId: number) => {
+  const handleUpsertComment = async (postId: number, userId: number) => {
+    console.log('Estado atual de newComment:', newComment);
+    // Pegando o valor do comentário para o post
     const description = newComment[postId]?.trim();
-    
-    if (!description) {
-      alert('O comentário não pode estar vazio.');
-      return;
-    }
-  
-    const commentPayload = {
-      post_id: postId,
-      description,
-      user_id: user?.id,
-    };
-  
-    try {
-      const response = await customFetch('/comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(commentPayload),
-      });
-  
-      if (response.ok) {
-        const newCommentData: Comment = await response.json();
-        setComments((prevComments) => [...prevComments, newCommentData]);
-        setNewComment((prev) => ({ ...prev, [postId]: '' }));
-        setNewCommentTrigger((prev) => !prev);
-        setAddComment(false);
-      } else {
-        alert('Erro ao adicionar comentário.');
-      }
-    } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
-      alert('Erro inesperado. Tente novamente.');
-    }
-  };
-  
-  const handleEditComment = async (postId: number, commentId: number, userId: number) => {
-    const description = newComment[postId]?.trim();
+    console.log('Descrição extraída:', description);
   
     if (!description) {
       alert('O comentário não pode estar vazio.');
       return;
     }
   
+    // Verificar se o comentário já existe
     const existingComment = comments.find(
-      (comment) => comment.id === commentId && comment.user_id === userId
+      (comment) => comment.post_id === postId && comment.user_id === userId
     );
   
+    // Garantir permissões
     if (existingComment && user?.id !== userId) {
       alert('Você não tem permissão para editar este comentário.');
       return;
     }
   
+    const method = existingComment ? 'PUT' : 'POST';
+    const url = existingComment ? `/comments/${existingComment.id}` : '/comments';
+  
+    // Objeto do comentário a ser enviado
     const commentPayload = {
       post_id: postId,
       description,
@@ -168,32 +139,51 @@ export function Posts() {
     };
   
     try {
-      const response = await customFetch(`/comments/${commentId}`, {
-        method: 'PUT',
+      console.log('Enviando payload:', commentPayload);
+  
+      const response = await customFetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(commentPayload),
       });
+
+      console.log('Corpo da requisição:', { post_id: postId, description, user_id: user?.id });
   
       if (response.ok) {
         const updatedCommentData: Comment = await response.json();
-        setComments((prevComments) =>
-          prevComments.map((comment) =>
-            comment.id === updatedCommentData.id ? updatedCommentData : comment
-          )
+        console.log(
+          existingComment ? 'Comentário editado:' : 'Novo comentário adicionado:',
+          updatedCommentData
         );
+  
+        // Atualizar a lista de comentários
+        setComments((prevComments) =>
+          existingComment
+            ? prevComments.map((comment) =>
+                comment.id === updatedCommentData.id ? updatedCommentData : comment
+              )
+            : [...prevComments, updatedCommentData]
+        );
+  
+        // Limpar o campo de comentário após sucesso
         setNewComment((prev) => ({ ...prev, [postId]: '' }));
         setNewCommentTrigger((prev) => !prev);
-        setEditingCommentId(null); // Limpa o modo de edição
+        setAddComment(false);
       } else {
-        alert('Erro ao editar comentário.');
+        const errorMsg = await response.text();
+        console.error('Erro na resposta:', errorMsg);
+        alert(existingComment ? 'Erro ao editar comentário.' : 'Erro ao adicionar comentário.');
       }
     } catch (error) {
-      console.error('Erro ao editar comentário:', error);
+      console.error(
+        existingComment ? 'Erro ao editar comentário:' : 'Erro ao adicionar comentário:',
+        error
+      );
       alert('Erro inesperado. Tente novamente.');
     }
-  };
+  };   
 
   const handleDeleteComment = async (commentId: number, userId: number) => {
     if (user?.id === userId) {
@@ -234,12 +224,6 @@ export function Posts() {
             Edit Profile
           </button>
           <button
-            className="bg-[#ff4081] p-2 rounded-lg text-white text-sm hover:bg-[#ff1a70]"
-            onClick={() => navigate('/posts-report')}
-          >
-            Report
-          </button>
-          <button
             className="bg-[#40c4ff] p-2 rounded-lg text-white text-sm hover:bg-[#2586b1]"
             onClick={logout}
           >
@@ -278,16 +262,15 @@ export function Posts() {
             </div>
             <p className="mt-2 text-gray-700">{post.description}</p>
 
-            {/* {post.file_path && (
+            {post.file_path && (
               <div className="mt-4">
                 <img
-                   src={`/public/${post.file_path.replace(/\\/g, '/')}`}
-                  alt={`${post.file_path}`}
+                  src={post.file_path.replace('public\\', '/')}
+                  alt={post.file_name || 'Imagem do post'}
                   className="w-full h-auto rounded-lg"
                 />
               </div>
-            )} */}
-
+            )}
 
             <div className="mt-6">
               <h3 className="text-lg font-bold text-[#40c4ff]">Comentários:</h3>
@@ -322,30 +305,28 @@ export function Posts() {
                       <button
                         onClick={() => {
                           if (editingCommentId === comment.id) {
-                            setEditingCommentId(null);
-                            handleEditComment(post.id, comment.id, comment.user_id); // Edita o comentário
+                            setEditingCommentId(null); 
+                            handleUpsertComment(post.id, comment.user_id); 
                           } else {
-                            setEditingCommentId(comment.id); // Habilita o modo de edição
+                            setEditingCommentId(comment.id); 
                           }
                         }}
                         className="bg-[#40c4ff] px-2 py-1 rounded-lg text-white font-medium hover:bg-[#009acd]"
                       >
                         {editingCommentId === comment.id ? 'Salvar' : 'Editar'}
                       </button>
-
                       <button
                         onClick={() => {
                           if (editingCommentId === comment.id) {
-                            setEditingCommentId(null); // Cancela a edição
+                            setEditingCommentId(null); 
                           } else {
-                            handleDeleteComment(comment.id, comment.user_id); // Exclui o comentário
+                            handleDeleteComment(comment.id, comment.user_id); 
                           }
                         }}
                         className="bg-red-600 px-2 py-1 rounded-lg text-white font-medium hover:bg-red-800"
                       >
                         {editingCommentId === comment.id ? 'Cancelar' : 'Excluir'}
                       </button>
-
                       </div>
                     </li>
                   ))}
@@ -371,7 +352,7 @@ export function Posts() {
               :  
                 <div className='flex gap-4'>
                   <button
-                  onClick={() => handleAddComment(post.id)}
+                  onClick={() => handleUpsertComment(post.id, post.user_id)}
                   className="mt-2 bg-[#40c4ff] px-4 py-2 rounded-lg text-white font-medium hover:bg-[#009acd]"
                 >
                   Salvar
@@ -384,6 +365,7 @@ export function Posts() {
                 </button>
                 </div>
               }
+             
             </div>
           </div>
         ))}

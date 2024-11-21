@@ -3,10 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { customFetch } from '../../utils/api';  
 import { useAuth } from '../../context/AuthContext';
 
+interface User {
+  name: string;
+  email: string;
+}
+
 export function UserForm() {
   const { user } = useAuth();  
   const { id } = useParams();  
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -22,14 +28,19 @@ export function UserForm() {
           const response = await customFetch(`/users/${id}`);
           if (response.ok) {
             const data = await response.json();
+            const user = data.user
+            setCurrentUser(user); 
             setFormData({
-              name: data.name || '',
-              email: data.email || '',
+              name: user.name || '',
+              email: user.email || '',
               password: '', 
             });
           } else {
-            console.error('Erro ao buscar dados do usuário');
-          }
+              const errorData = await response.json();
+              const errorMessage = errorData?.mensagem || 'Erro ao salvar usuário';
+              alert(errorMessage)
+              throw new Error(errorMessage);
+            }
         } catch (error) {
           console.error('Erro na requisição:', error);
         }
@@ -42,16 +53,21 @@ export function UserForm() {
   }, [id]);
 
   const handleUpsertUserData = async () => {
+    if (!currentUser) {
+      alert('Erro: Dados do usuário não carregados.');
+      return;
+    }
+  
     try {
       const userData = {
-        name: formData.name || '',
-        email: formData.email || '',
-        ...(formData.password && !id && { password: formData.password }), 
+        name: formData.name || currentUser.name,
+        email: formData.email || currentUser.email,
+        ...(formData.password && { password: formData.password }),
       };
-
-      const url = id ? `/users/${id}` : '/users'; 
+  
+      const url = id ? `/users/${id}` : '/users';
       const method = id ? 'PUT' : 'POST';
-
+  
       const response = await customFetch(url, {
         method,
         headers: {
@@ -59,28 +75,26 @@ export function UserForm() {
         },
         body: JSON.stringify(userData),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         const errorMessage = errorData?.mensagem || 'Erro ao salvar usuário';
         throw new Error(errorMessage);
       }
-
-      const savedUser = await response.json();
-
+  
+      alert(id ? 'Usuário atualizado com sucesso!' : 'Usuário criado com sucesso!');
+      
       if (id) {
-        alert('Usuário atualizado com sucesso!');
+        navigate('/posts');
       } else {
-        alert('Usuário criado com sucesso!');
+        navigate('/')
       }
-
-      navigate('/'); 
     } catch (error: any) {
-        alert(error.message || 'Erro inesperado ao salvar os dados');
-        console.error('Erro:', error);
+      alert(error.message || 'Erro inesperado ao salvar os dados');
+      console.error('Erro:', error);
     }
   };
-
+  
   return (
     <div className="flex items-center justify-center h-screen bg-gradient-to-br from-[#403181] via-[#40c4ff] to-[#ff4081]">
       <div className="w-full max-w-sm mx-auto bg-white p-8 rounded-lg shadow-lg mt-10">

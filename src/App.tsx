@@ -5,6 +5,7 @@ import { Posts } from './pages/Posts';
 import { PostForm } from './pages/PostForm';
 import { AuthProvider } from './context/AuthContext';
 import { Login } from './pages/Login';
+import { PostsReport } from './pages/PostsReport';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/posts" element={<Posts />} />
           <Route path="/create-post" element={<PostForm />} />
           <Route path="/create-post/:id" element={<PostForm />} />
+          <Route path="/posts-report" element={<PostsReport />} />
           <Route path="/" element={<Login />} />
         </Routes>
       </AuthProvider>
